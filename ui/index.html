@@ -1,0 +1,756 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ARMWise — On-Device Windows-on-ARM Compatibility Advisor</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-dark: #0b0f19;
+      --bg-card: rgba(18, 26, 43, 0.75);
+      --bg-card-hover: rgba(26, 37, 60, 0.85);
+      --border-color: rgba(255, 255, 255, 0.1);
+      --border-accent: rgba(59, 130, 246, 0.4);
+      --accent-blue: #3b82f6;
+      --accent-cyan: #06b6d4;
+      --native-emerald: #10b981;
+      --compatible-blue: #3b82f6;
+      --uncertain-amber: #f59e0b;
+      --risk-crimson: #ef4444;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --shadow-glow: 0 0 25px rgba(59, 130, 246, 0.15);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Outfit', sans-serif;
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      background-image: 
+        radial-gradient(circle at 15% 15%, rgba(59, 130, 246, 0.08) 0%, transparent 40%),
+        radial-gradient(circle at 85% 85%, rgba(6, 182, 212, 0.08) 0%, transparent 40%);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Header */
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1.25rem 2.5rem;
+      background: rgba(11, 15, 25, 0.8);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border-color);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .brand-icon {
+      width: 40px;
+      height: 40px;
+      background: linear-gradient(135deg, var(--accent-blue), var(--accent-cyan));
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 1.25rem;
+      color: #fff;
+      box-shadow: 0 0 15px rgba(59, 130, 246, 0.4);
+    }
+
+    .brand-title {
+      font-size: 1.5rem;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      background: linear-gradient(90deg, #ffffff, #94a3b8);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .brand-subtitle {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .status-pill {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.4rem 1rem;
+      background: rgba(16, 185, 129, 0.1);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      border-radius: 20px;
+      font-size: 0.85rem;
+      color: var(--native-emerald);
+      font-weight: 500;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      background-color: var(--native-emerald);
+      border-radius: 50%;
+      box-shadow: 0 0 8px var(--native-emerald);
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(1.2); }
+      100% { opacity: 1; transform: scale(1); }
+    }
+
+    /* Container */
+    main {
+      max-width: 1200px;
+      margin: 2rem auto;
+      padding: 0 1.5rem;
+      width: 100%;
+      flex: 1;
+    }
+
+    /* Tabs */
+    .tabs {
+      display: flex;
+      gap: 1rem;
+      margin-bottom: 2rem;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 0.75rem;
+    }
+
+    .tab-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-size: 1rem;
+      font-weight: 500;
+      padding: 0.5rem 1.25rem;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .tab-btn:hover {
+      color: var(--text-main);
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .tab-btn.active {
+      color: #fff;
+      background: rgba(59, 130, 246, 0.15);
+      border: 1px solid var(--border-accent);
+    }
+
+    /* Dropzone */
+    .dropzone {
+      border: 2px dashed rgba(59, 130, 246, 0.4);
+      border-radius: 16px;
+      padding: 3.5rem 2rem;
+      text-align: center;
+      background: var(--bg-card);
+      backdrop-filter: blur(12px);
+      transition: all 0.3s ease;
+      cursor: pointer;
+      margin-bottom: 2rem;
+      position: relative;
+    }
+
+    .dropzone:hover, .dropzone.dragover {
+      border-color: var(--accent-cyan);
+      background: var(--bg-card-hover);
+      box-shadow: var(--shadow-glow);
+      transform: translateY(-2px);
+    }
+
+    .dropzone-icon {
+      font-size: 3rem;
+      margin-bottom: 1rem;
+      display: block;
+    }
+
+    .dropzone-title {
+      font-size: 1.25rem;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+    }
+
+    .dropzone-hint {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+    }
+
+    #fileInput {
+      display: none;
+    }
+
+    /* Result Card */
+    .result-card {
+      display: none;
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 2rem;
+      backdrop-filter: blur(12px);
+      margin-bottom: 2rem;
+      box-shadow: var(--shadow-glow);
+      animation: fadeIn 0.4s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .result-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 1.5rem;
+      padding-bottom: 1.25rem;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .app-name {
+      font-size: 1.75rem;
+      font-weight: 700;
+      margin-bottom: 0.25rem;
+    }
+
+    .app-arch {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.85rem;
+      color: var(--accent-cyan);
+      background: rgba(6, 182, 212, 0.1);
+      padding: 0.2rem 0.6rem;
+      border-radius: 4px;
+      display: inline-block;
+    }
+
+    .badge-category {
+      font-size: 0.95rem;
+      font-weight: 700;
+      padding: 0.5rem 1.25rem;
+      border-radius: 30px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .badge-native { background: rgba(16, 185, 129, 0.15); color: var(--native-emerald); border: 1px solid rgba(16, 185, 129, 0.4); }
+    .badge-compatible { background: rgba(59, 130, 246, 0.15); color: var(--compatible-blue); border: 1px solid rgba(59, 130, 246, 0.4); }
+    .badge-uncertain { background: rgba(245, 158, 11, 0.15); color: var(--uncertain-amber); border: 1px solid rgba(245, 158, 11, 0.4); }
+    .badge-risk { background: rgba(239, 68, 68, 0.15); color: var(--risk-crimson); border: 1px solid rgba(239, 68, 68, 0.4); }
+
+    .indicators-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .indicator-item {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .indicator-icon {
+      font-size: 1.25rem;
+    }
+
+    .indicator-text {
+      font-size: 0.9rem;
+    }
+
+    .indicator-label {
+      color: var(--text-muted);
+      font-size: 0.75rem;
+      display: block;
+    }
+
+    .explanation-box {
+      background: rgba(0, 0, 0, 0.25);
+      border-left: 4px solid var(--accent-blue);
+      border-radius: 0 10px 10px 0;
+      padding: 1.25rem;
+      margin-bottom: 1.5rem;
+      line-height: 1.6;
+    }
+
+    .explanation-title {
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+      color: var(--accent-cyan);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    /* Cases Table */
+    .cases-section {
+      margin-top: 1.5rem;
+    }
+
+    .section-title {
+      font-size: 1.1rem;
+      font-weight: 600;
+      margin-bottom: 1rem;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.9rem;
+    }
+
+    th, td {
+      padding: 0.75rem 1rem;
+      text-align: left;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    th {
+      color: var(--text-muted);
+      font-weight: 500;
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    /* Ask Panel */
+    .ask-panel {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 1.5rem;
+      margin-bottom: 2rem;
+    }
+
+    .ask-input-group {
+      display: flex;
+      gap: 0.75rem;
+      margin-top: 1rem;
+    }
+
+    .ask-input {
+      flex: 1;
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 0.75rem 1rem;
+      color: #fff;
+      font-size: 0.95rem;
+      outline: none;
+    }
+
+    .ask-input:focus {
+      border-color: var(--accent-blue);
+    }
+
+    .ask-btn {
+      background: linear-gradient(135deg, var(--accent-blue), var(--accent-cyan));
+      border: none;
+      border-radius: 8px;
+      padding: 0.75rem 1.5rem;
+      color: #fff;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+
+    .ask-btn:hover {
+      opacity: 0.9;
+    }
+
+    .ask-response {
+      margin-top: 1rem;
+      padding: 1rem;
+      background: rgba(59, 130, 246, 0.08);
+      border: 1px solid rgba(59, 130, 246, 0.2);
+      border-radius: 8px;
+      display: none;
+      line-height: 1.5;
+    }
+
+    /* Dashboard Grid */
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1.25rem;
+      margin-bottom: 2rem;
+    }
+
+    .metric-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 14px;
+      padding: 1.5rem;
+      text-align: center;
+    }
+
+    .metric-val {
+      font-size: 2.25rem;
+      font-weight: 700;
+      margin-bottom: 0.25rem;
+    }
+
+    .metric-lbl {
+      color: var(--text-muted);
+      font-size: 0.85rem;
+    }
+
+    footer {
+      text-align: center;
+      padding: 1.5rem;
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      border-top: 1px solid var(--border-color);
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="brand">
+      <div class="brand-icon">A</div>
+      <div>
+        <div class="brand-title">ARMWise</div>
+        <div class="brand-subtitle">Qualcomm® Snapdragon® AI Advisory</div>
+      </div>
+    </div>
+    <div class="status-pill">
+      <div class="status-dot"></div>
+      Backend Online • OpenRouter AI
+    </div>
+  </header>
+
+  <main>
+    <div class="tabs">
+      <button class="tab-btn active" onclick="showTab('scan')">⚡ .exe File Advisor</button>
+      <button class="tab-btn" onclick="showTab('installed')">💻 Installed Apps Bulk Scan</button>
+      <button class="tab-btn" onclick="showTab('dashboard')">📊 Compatibility Dashboard</button>
+    </div>
+
+    <!-- TAB 1: EXE SCAN -->
+    <div id="tab-scan">
+      <div class="dropzone" id="dropzone" onclick="document.getElementById('fileInput').click()">
+        <span class="dropzone-icon">📥</span>
+        <div class="dropzone-title">Drag & Drop .exe File Here</div>
+        <div class="dropzone-hint">or click to browse local Windows executables for deterministic ARM64 analysis</div>
+        <input type="file" id="fileInput" accept=".exe" onchange="handleFileSelect(event)">
+      </div>
+
+      <!-- Result View -->
+      <div class="result-card" id="resultCard">
+        <div class="result-header">
+          <div>
+            <div class="app-name" id="resAppName">Application.exe</div>
+            <div class="app-arch" id="resArch">x64 (Emulated)</div>
+          </div>
+          <div class="badge-category badge-compatible" id="resCategory">Likely Compatible</div>
+        </div>
+
+        <div class="indicators-grid">
+          <div class="indicator-item">
+            <span class="indicator-icon" id="indDriverIcon">✅</span>
+            <div>
+              <span class="indicator-label">Kernel Drivers</span>
+              <span class="indicator-text" id="indDriverText">No drivers detected</span>
+            </div>
+          </div>
+          <div class="indicator-item">
+            <span class="indicator-icon" id="indAnticheatIcon">✅</span>
+            <div>
+              <span class="indicator-label">Anti-Cheat Engine</span>
+              <span class="indicator-text" id="indAnticheatText">None detected</span>
+            </div>
+          </div>
+          <div class="indicator-item">
+            <span class="indicator-icon">🔐</span>
+            <div>
+              <span class="indicator-label">Publisher Digital Signature</span>
+              <span class="indicator-text" id="indSigText">Verified Signature</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="explanation-box">
+          <div class="explanation-title">💡 Grounded On-Device AI Explanation</div>
+          <div id="resExplanation">Loading explanation...</div>
+        </div>
+
+        <div class="cases-section">
+          <div class="section-title">🔍 Sourced Knowledge Base Cases</div>
+          <table>
+            <thead>
+              <tr>
+                <th>Matched Application</th>
+                <th>Observed Outcome</th>
+                <th>Source & Date</th>
+                <th>Vector Similarity</th>
+              </tr>
+            </thead>
+            <tbody id="resCasesBody">
+              <!-- Dynamically populated -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Ask Panel -->
+      <div class="ask-panel">
+        <div class="section-title">💬 Ask Grounded Follow-Up Question</div>
+        <div class="dropzone-hint">Questions are answered strictly using retrieved facts and static evidence for the scanned application.</div>
+        <div class="ask-input-group">
+          <input type="text" class="ask-input" id="askQuestionInput" placeholder="e.g. Why does Photoshop work but this game fails?">
+          <button class="ask-btn" onclick="sendAskQuestion()">Ask AI Advisor</button>
+        </div>
+        <div class="ask-response" id="askResponseBox"></div>
+      </div>
+    </div>
+
+    <!-- TAB 2: INSTALLED APPS -->
+    <div id="tab-installed" style="display: none;">
+      <div class="result-card" style="display: block;">
+        <div class="result-header">
+          <div class="app-name">Installed System Applications Scan</div>
+          <button class="ask-btn" onclick="runInstalledScan()">Run Registry Scan</button>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Application Name</th>
+              <th>Architecture</th>
+              <th>Category</th>
+              <th>Kernel Driver / Anti-Cheat</th>
+            </tr>
+          </thead>
+          <tbody id="installedTableBody">
+            <tr><td colspan="4" style="text-align: center; color: var(--text-muted);">Click 'Run Registry Scan' to enumerate installed applications.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- TAB 3: DASHBOARD -->
+    <div id="tab-dashboard" style="display: none;">
+      <div class="metrics-grid">
+        <div class="metric-card">
+          <div class="metric-val" style="color: var(--native-emerald);" id="mNative">0</div>
+          <div class="metric-lbl">Native ARM64</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-val" style="color: var(--compatible-blue);" id="mLikely">0</div>
+          <div class="metric-lbl">Likely Compatible</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-val" style="color: var(--uncertain-amber);" id="mUncertain">0</div>
+          <div class="metric-lbl">Uncertain Coverage</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-val" style="color: var(--risk-crimson);" id="mRisk">0</div>
+          <div class="metric-lbl">High Risk / Kernel Failure</div>
+        </div>
+      </div>
+
+      <div class="result-card" style="display: block;">
+        <div class="section-title">🛡️ Native ARM64 Recommendations & Alternatives</div>
+        <div id="alternativesList">Loading Knowledge Base alternatives...</div>
+      </div>
+    </div>
+
+  </main>
+
+  <footer>
+    ARMWise • Snapdragon® Windows-on-ARM Advisory Engine • Zero External Telemetry
+  </footer>
+
+  <script>
+    let currentScannedApp = "";
+
+    function showTab(tabName) {
+      document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+      event.target.classList.add('active');
+      
+      document.getElementById('tab-scan').style.display = tabName === 'scan' ? 'block' : 'none';
+      document.getElementById('tab-installed').style.display = tabName === 'installed' ? 'block' : 'none';
+      document.getElementById('tab-dashboard').style.display = tabName === 'dashboard' ? 'block' : 'none';
+
+      if (tabName === 'dashboard') loadDashboard();
+    }
+
+    // Drag & Drop Setup
+    const dropzone = document.getElementById('dropzone');
+    dropzone.addEventListener('dragover', (e) => { e.preventDefault(); dropzone.classList.add('dragover'); });
+    dropzone.addEventListener('dragleave', () => { dropzone.classList.remove('dragover'); });
+    dropzone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dropzone.classList.remove('dragover');
+      if (e.dataTransfer.files.length > 0) {
+        uploadFile(e.dataTransfer.files[0]);
+      }
+    });
+
+    function handleFileSelect(e) {
+      if (e.target.files.length > 0) {
+        uploadFile(e.target.files[0]);
+      }
+    }
+
+    async function uploadFile(file) {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      document.getElementById('resultCard').style.display = 'block';
+      document.getElementById('resAppName').innerText = "Analyzing " + file.name + "...";
+
+      try {
+        const resp = await fetch('/scan/exe', { method: 'POST', body: formData });
+        const data = await resp.json();
+        renderResult(data);
+      } catch (err) {
+        document.getElementById('resAppName').innerText = "Scan Error: " + err.message;
+      }
+    }
+
+    function renderResult(data) {
+      currentScannedApp = data.application;
+      document.getElementById('resAppName').innerText = data.application;
+      document.getElementById('resArch').innerText = data.evidence.architecture + (data.evidence.native_arm64 ? " (Native)" : " (Emulated Prism)");
+      
+      const catBadge = document.getElementById('resCategory');
+      catBadge.innerText = data.category;
+      catBadge.className = "badge-category " + 
+        (data.category === 'Native' ? 'badge-native' :
+         data.category === 'Likely Compatible' ? 'badge-compatible' :
+         data.category === 'High Risk' ? 'badge-risk' : 'badge-uncertain');
+
+      // Indicators
+      const driverIcon = document.getElementById('indDriverIcon');
+      const driverText = document.getElementById('indDriverText');
+      if (data.evidence.driver_indicators) {
+        driverIcon.innerText = "⚠️";
+        driverText.innerText = "Kernel driver components detected";
+      } else {
+        driverIcon.innerText = "✅";
+        driverText.innerText = "No kernel drivers detected";
+      }
+
+      const acIcon = document.getElementById('indAnticheatIcon');
+      const acText = document.getElementById('indAnticheatText');
+      if (data.evidence.anti_cheat_indicators) {
+        acIcon.innerText = "⛔";
+        acText.innerText = "Anti-cheat protection detected";
+      } else {
+        acIcon.innerText = "✅";
+        acText.innerText = "No anti-cheat conflicts";
+      }
+
+      document.getElementById('indSigText').innerText = data.evidence.has_signature ? "Verified Publisher Signature" : "Unsigned Executable";
+      document.getElementById('resExplanation').innerText = data.explanation;
+
+      // Render Cases
+      const tbody = document.getElementById('resCasesBody');
+      tbody.innerHTML = "";
+      if (data.retrieved_cases && data.retrieved_cases.length > 0) {
+        data.retrieved_cases.forEach(c => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td><strong>${c.application}</strong></td>
+            <td><span style="color: ${c.observed_result === 'works' ? 'var(--native-emerald)' : c.observed_result === 'fails' ? 'var(--risk-crimson)' : 'var(--uncertain-amber)'}">${c.observed_result}</span></td>
+            <td>${c.source} (${c.source_date})</td>
+            <td><code>${Math.round(c.similarity * 100)}% Match</code></td>
+          `;
+          tbody.appendChild(tr);
+        });
+      } else {
+        tbody.innerHTML = `<tr><td colspan="4" style="color: var(--text-muted); text-align: center;">No high-confidence cases matched in Knowledge Base.</td></tr>`;
+      }
+    }
+
+    async function sendAskQuestion() {
+      const q = document.getElementById('askQuestionInput').value;
+      if (!q) return;
+
+      const responseBox = document.getElementById('askResponseBox');
+      responseBox.style.display = 'block';
+      responseBox.innerText = "Asking ARMWise Local AI Reasoning Engine...";
+
+      try {
+        const resp = await fetch('/ask', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ context_id: currentScannedApp || 'system-summary', question: q })
+        });
+        const data = await resp.json();
+        responseBox.innerText = data.answer;
+      } catch (err) {
+        responseBox.innerText = "Error: " + err.message;
+      }
+    }
+
+    async function runInstalledScan() {
+      const tbody = document.getElementById('installedTableBody');
+      tbody.innerHTML = `<tr><td colspan="4" style="text-align: center;">Scanning Windows Registry...</td></tr>`;
+
+      try {
+        const resp = await fetch('/scan/installed');
+        const data = await resp.json();
+        tbody.innerHTML = "";
+        data.results.forEach(res => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td><strong>${res.application}</strong></td>
+            <td><code>${res.evidence.architecture}</code></td>
+            <td><span class="badge-category ${res.category === 'Native' ? 'badge-native' : res.category === 'High Risk' ? 'badge-risk' : 'badge-compatible'}">${res.category}</span></td>
+            <td>${res.evidence.driver_indicators || res.evidence.anti_cheat_indicators ? '⚠️ Kernel Driver/Anti-Cheat Detected' : '✅ Safe User-Mode'}</td>
+          `;
+          tbody.appendChild(tr);
+        });
+      } catch (err) {
+        tbody.innerHTML = `<tr><td colspan="4" style="color: red;">Failed to scan installed apps.</td></tr>`;
+      }
+    }
+
+    async function loadDashboard() {
+      try {
+        const summaryResp = await fetch('/dashboard/summary');
+        const sData = await summaryResp.json();
+        document.getElementById('mNative').innerText = sData.native || 0;
+        document.getElementById('mLikely').innerText = sData.likely_compatible || 0;
+        document.getElementById('mUncertain').innerText = sData.uncertain || 0;
+        document.getElementById('mRisk').innerText = sData.high_risk || 0;
+
+        const altResp = await fetch('/dashboard/alternatives/default');
+        const aData = await altResp.json();
+        const altList = document.getElementById('alternativesList');
+        altList.innerHTML = aData.alternatives.map(a => `<div style="margin-bottom: 0.5rem;">🔹 <strong>${a.application}</strong> (${a.category}) — Sourced from ${a.source} (${a.source_date})</div>`).join('');
+      } catch (err) {
+        console.error(err);
+      }
+    }
+  </script>
+</body>
+</html>

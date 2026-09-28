@@ -1,0 +1,26 @@
+name: armwise
+description: "ARMWise — On-device Windows-on-ARM compatibility advisor for Snapdragon-powered PCs."
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.10.4
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+  http: ^1.2.2
+  desktop_drop: ^0.4.4
+  file_picker: ^8.1.8
+  google_fonts: ^6.2.1
+  flutter_animate: ^4.5.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
